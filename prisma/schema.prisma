@@ -1,0 +1,137 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum ProductStatus {
+  AVAILABLE
+  SOLD
+}
+
+enum ProductCategory {
+  TOP
+  BOTTOM
+  ACCESSORY
+}
+
+enum FulfillmentType {
+  SHIPPING
+  PICKUP
+}
+
+enum PickupDay {
+  THURSDAY
+  SUNDAY
+}
+
+enum FulfillmentStatus {
+  AWAITING_DETAILS
+  COMPLETE
+}
+
+model Customer {
+  id                     String    @id @default(cuid())
+  email                  String    @unique
+  passwordHash           String
+  firstName              String?
+  lastName               String?
+  purchasesCount         Int       @default(0)
+  loyaltyRewardAvailable Boolean   @default(false)
+  loyaltyRewardExpiresAt DateTime?
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+  orders                 Order[]
+}
+
+model Drop {
+  id        String    @id @default(cuid())
+  slug      String    @unique
+  name      String
+  location  String?
+  schedule  String?
+  note      String?
+  published Boolean   @default(false)
+  featured  Boolean   @default(false)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  products  Product[]
+}
+
+model Product {
+  id          String        @id @default(cuid())
+  code        String        @unique
+  title       String
+  price       Int
+  size        String?
+  brand       String?
+  description String?
+  images      String        @default("[]")
+  status      ProductStatus @default(AVAILABLE)
+  soldAt      DateTime?
+  /// Mayor = más arriba en el catálogo (prioridad de visualización).
+  sortOrder   Int           @default(0)
+  category    ProductCategory @default(TOP)
+  /// Porcentaje de descuento (1–90). Requiere discountEndsAt para estar activo.
+  discountPercent Int?
+  discountEndsAt  DateTime?
+  dropId      String?
+  drop        Drop?         @relation(fields: [dropId], references: [id], onDelete: SetNull)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  orders      Order[]
+
+  @@index([dropId])
+  @@index([status])
+  @@index([sortOrder])
+  @@index([category])
+  @@index([discountPercent])
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  FAILED
+  CANCELLED
+}
+
+model Order {
+  id                     String             @id @default(cuid())
+  productId              String
+  product                Product            @relation(fields: [productId], references: [id], onDelete: Restrict)
+  customerId             String?
+  customer               Customer?          @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  status                 OrderStatus        @default(PENDING)
+  /// Monto en CLP acordado al crear el checkout (snapshot).
+  amountClp              Int
+  loyaltyDiscountApplied Boolean            @default(false)
+  loyaltyCounted         Boolean            @default(false)
+  preferenceId           String?
+  paymentId              String?
+  fulfillmentStatus      FulfillmentStatus  @default(AWAITING_DETAILS)
+  fulfillmentType        FulfillmentType?
+  pickupDay              PickupDay?
+  /// Próxima fecha de retiro en feria (calculada al confirmar datos).
+  pickupOn               DateTime?
+  pickupReminderSentAt   DateTime?
+  buyerFirstName         String?
+  buyerLastName          String?
+  buyerEmail             String?
+  buyerPhone             String?
+  buyerAddress           String?
+  buyerCommune           String?
+  buyerRegion            String?
+  fulfillmentAt          DateTime?
+  createdAt              DateTime           @default(now())
+  updatedAt              DateTime           @updatedAt
+
+  @@index([productId])
+  @@index([customerId])
+  @@index([status])
+  @@index([preferenceId])
+  @@index([fulfillmentStatus])
+  @@index([pickupOn])
+}

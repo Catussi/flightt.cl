@@ -1,36 +1,68 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Flightt — Catálogo y checkout
 
-## Getting Started
+Tienda online de ropa con inventario por piezas únicas, drops de feria y venta directa desde el catálogo.
 
-First, run the development server:
+## Stack
+
+- Next.js 16 (App Router)
+- React 19, TypeScript, Tailwind CSS 4
+- PostgreSQL + Prisma
+- Mercado Pago Payment Brick
+- Resend (correo), Vercel Blob (imágenes)
+
+## Funcionalidades
+
+- Catálogo público por categorías (arriba, abajo, accesorios) y sección de ofertas
+- Drops publicables con hero destacado
+- Checkout con Mercado Pago y formulario post-pago (envío Starken o retiro en feria)
+- Panel admin: productos, drops, pedidos e inventario
+- Cuenta de cliente con programa de fidelidad (5 compras → 20% en la siguiente)
+- Recordatorios automáticos de retiro vía cron
+- Consultas por WhatsApp e Instagram
+
+## Requisitos
+
+- Node.js 20+
+- Base PostgreSQL
+
+## Configuración
+
+Copia las variables de entorno:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+cp .env.example .env
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Completa al menos `DATABASE_URL`, `ADMIN_PASSWORD` y `SESSION_SECRET`. El resto de variables está documentado en `.env.example`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Aplica migraciones y arranca en desarrollo:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm install
+npx prisma migrate deploy
+npm run dev
+```
 
-## Learn More
+La app queda en [http://localhost:3000](http://localhost:3000). El panel admin está en `/admin`.
 
-To learn more about Next.js, take a look at the following resources:
+## Scripts
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+| Comando | Descripción |
+|---------|-------------|
+| `npm run dev` | Servidor de desarrollo |
+| `npm run build` | Build de producción (incluye Prisma) |
+| `npm run start` | Servidor de producción |
+| `npm run lint` | ESLint |
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Estructura
 
-## Deploy on Vercel
+```
+src/app/          Rutas públicas, admin, checkout y API
+src/components/   UI compartida
+src/lib/          Dominio: pagos, fidelidad, notificaciones, uploads
+prisma/           Schema y migraciones
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Licencia
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Proyecto privado. Todos los derechos reservados.
