@@ -60,7 +60,9 @@ export function ChilexpressAddressFields() {
 
       {loadError ? (
         <p className="rounded-xl border border-amber-900/40 bg-amber-950/30 px-3 py-2 text-xs text-amber-200">
-          {loadError}. Revisa la API key de Chilexpress en el servidor.
+          {loadError}. Revisa en Vercel:{" "}
+          <strong>CHILEXPRESS_COVERAGE_KEY</strong> = Primary key de{" "}
+          <em>flightt-cl-cobertura</em>.
         </p>
       ) : null}
 

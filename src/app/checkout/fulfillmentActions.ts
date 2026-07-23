@@ -8,7 +8,7 @@ import { recordLoyaltyPurchase } from "@/lib/loyalty";
 import { nextPickupOn } from "@/lib/pickupSchedule";
 import { getCustomerId } from "@/lib/customerAuth";
 import { quoteChilexpressShipping } from "@/lib/chilexpress/client";
-import { isChilexpressConfigured } from "@/lib/chilexpress/config";
+import { isChilexpressRatingConfigured } from "@/lib/chilexpress/config";
 import type { FulfillmentType, PickupDay } from "@prisma/client";
 
 function clean(s: FormDataEntryValue | null): string {
@@ -85,8 +85,11 @@ export async function submitFulfillmentAction(
     if (!buyerAddress || !buyerCommune || !buyerRegion || !buyerCountyCode) {
       return { error: "Completa dirección y comuna válida para envío Chilexpress." };
     }
-    if (!isChilexpressConfigured()) {
-      return { error: "Cotización de envío no disponible por ahora." };
+    if (!isChilexpressRatingConfigured()) {
+      return {
+        error:
+          "Cotización no disponible. Agrega CHILEXPRESS_RATING_KEY (Primary key de Cotizador).",
+      };
     }
   }
 

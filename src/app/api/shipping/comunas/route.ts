@@ -1,10 +1,13 @@
 import { NextResponse } from "next/server";
 import { fetchCoverageCounties } from "@/lib/chilexpress/client";
-import { isChilexpressConfigured } from "@/lib/chilexpress/config";
+import { isChilexpressCoverageConfigured } from "@/lib/chilexpress/config";
 
 export async function GET() {
-  if (!isChilexpressConfigured()) {
-    return NextResponse.json({ error: "Chilexpress no configurado" }, { status: 503 });
+  if (!isChilexpressCoverageConfigured()) {
+    return NextResponse.json(
+      { error: "Falta CHILEXPRESS_COVERAGE_KEY (Primary key de Coberturas)" },
+      { status: 503 },
+    );
   }
 
   try {

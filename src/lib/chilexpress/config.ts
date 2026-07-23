@@ -1,8 +1,32 @@
 export type ChilexpressEnv = "sandbox" | "production";
 
+function pickKey(...values: Array<string | undefined>): string | null {
+  for (const value of values) {
+    const trimmed = value?.trim();
+    if (trimmed) return trimmed;
+  }
+  return null;
+}
+
+/** Key de la suscripción Coberturas (flightt-cl-cobertura). */
+export function chilexpressCoverageKey(): string | null {
+  return pickKey(
+    process.env.CHILEXPRESS_COVERAGE_KEY,
+    process.env.CHILEXPRESS_SUBSCRIPTION_KEY,
+  );
+}
+
+/** Key de la suscripción Cotizador (flightt-cl-cotizador). */
+export function chilexpressRatingKey(): string | null {
+  return pickKey(
+    process.env.CHILEXPRESS_RATING_KEY,
+    process.env.CHILEXPRESS_SUBSCRIPTION_KEY,
+  );
+}
+
+/** @deprecated Usa chilexpressCoverageKey / chilexpressRatingKey. */
 export function chilexpressSubscriptionKey(): string | null {
-  const key = process.env.CHILEXPRESS_SUBSCRIPTION_KEY?.trim();
-  return key || null;
+  return chilexpressCoverageKey();
 }
 
 export function chilexpressEnv(): ChilexpressEnv {
@@ -22,8 +46,16 @@ export function chilexpressOriginCountyCode(): string {
   );
 }
 
+export function isChilexpressCoverageConfigured(): boolean {
+  return chilexpressCoverageKey() != null;
+}
+
+export function isChilexpressRatingConfigured(): boolean {
+  return chilexpressRatingKey() != null;
+}
+
 export function isChilexpressConfigured(): boolean {
-  return chilexpressSubscriptionKey() != null;
+  return isChilexpressCoverageConfigured() && isChilexpressRatingConfigured();
 }
 
 /** Peso/dimensiones por defecto para ropa (sobre estándar). */

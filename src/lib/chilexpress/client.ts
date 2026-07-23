@@ -1,7 +1,8 @@
 import {
   chilexpressBaseUrl,
+  chilexpressCoverageKey,
   chilexpressOriginCountyCode,
-  chilexpressSubscriptionKey,
+  chilexpressRatingKey,
   DEFAULT_PACKAGE,
 } from "@/lib/chilexpress/config";
 
@@ -22,11 +23,22 @@ let coverageCache: CoverageCounty[] | null = null;
 let coverageCacheAt = 0;
 const COVERAGE_TTL_MS = 1000 * 60 * 60 * 24;
 
-function headers(): HeadersInit {
-  const key = chilexpressSubscriptionKey();
-  if (!key) throw new Error("Chilexpress no configurado");
+function coverageHeaders(): HeadersInit {
+  const key = chilexpressCoverageKey();
+  if (!key) throw new Error("Chilexpress Coberturas no configurado");
+  return {
+    Accept: "application/json",
+    "Ocp-Apim-Subscription-Key": key,
+    "Cache-Control": "no-cache",
+  };
+}
+
+function ratingHeaders(): HeadersInit {
+  const key = chilexpressRatingKey();
+  if (!key) throw new Error("Chilexpress Cotizador no configurado");
   return {
     "Content-Type": "application/json",
+    Accept: "application/json",
     "Ocp-Apim-Subscription-Key": key,
     "Cache-Control": "no-cache",
   };
@@ -35,12 +47,12 @@ function headers(): HeadersInit {
 function pickCounties(payload: unknown): CoverageCounty[] {
   const root = payload as Record<string, unknown>;
   const data = root.data ?? root;
-  const list = Array.isArray(data)
-    ? data
+  const list = Array.isArray((root as Record<string, unknown>).coverageAreas)
+    ? ((root as Record<string, unknown>).coverageAreas as unknown[])
     : Array.isArray((data as Record<string, unknown>)?.coverageAreas)
       ? ((data as Record<string, unknown>).coverageAreas as unknown[])
-      : Array.isArray((data as Record<string, unknown>)?.counties)
-        ? ((data as Record<string, unknown>).counties as unknown[])
+      : Array.isArray(data)
+        ? (data as unknown[])
         : [];
 
   return list
@@ -50,7 +62,7 @@ function pickCounties(payload: unknown): CoverageCounty[] {
         r.countyCode ?? r.CountyCode ?? r.coverageAreaCode ?? r.code ?? "",
       ).trim();
       const countyName = String(
-        r.countyName ?? r.CountyName ?? r.coverageAreaName ?? r.name ?? "",
+        r.countyName ?? r.CountyName ?? r.coverageAreaName ?? r.coverageName ?? r.name ?? "",
       ).trim();
       const regionCode = String(r.regionCode ?? r.RegionCode ?? r.regionId ?? "").trim();
       const regionName = String(
@@ -62,44 +74,52 @@ function pickCounties(payload: unknown): CoverageCounty[] {
     .filter((x): x is CoverageCounty => x != null);
 }
 
+async function fetchRegionNames(): Promise<Map<string, string>> {
+  const url = `${chilexpressBaseUrl()}/georeference/api/v1.0/regions`;
+  const res = await fetch(url, { headers: coverageHeaders(), next: { revalidate: 86400 } });
+  if (!res.ok) return new Map();
+
+  const json = (await res.json()) as { regions?: Array<Record<string, unknown>> };
+  const map = new Map<string, string>();
+  for (const region of json.regions ?? []) {
+    const id = String(region.regionId ?? region.RegionId ?? "").trim();
+    const name = String(region.regionName ?? region.RegionName ?? "").trim();
+    if (id && name) map.set(id, name);
+  }
+  return map;
+}
+
 export async function fetchCoverageCounties(): Promise<CoverageCounty[]> {
   const now = Date.now();
   if (coverageCache && now - coverageCacheAt < COVERAGE_TTL_MS) {
     return coverageCache;
   }
 
-  const base = chilexpressBaseUrl();
-  const urls = [
-    `${base}/georeference/api/v1.0/coverage-areas?RegionCode=99`,
-    `${base}/rating/api/v1.0/coverage-areas?RegionCode=99`,
-  ];
-
-  let lastError: unknown;
-  for (const url of urls) {
-    try {
-      const res = await fetch(url, { headers: headers(), next: { revalidate: 86400 } });
-      if (!res.ok) {
-        lastError = new Error(`Cobertura ${res.status}`);
-        continue;
-      }
-      const json = (await res.json()) as unknown;
-      const counties = pickCounties(json);
-      if (counties.length > 0) {
-        coverageCache = counties.sort((a, b) =>
-          a.regionName.localeCompare(b.regionName, "es") ||
-          a.countyName.localeCompare(b.countyName, "es"),
-        );
-        coverageCacheAt = now;
-        return coverageCache;
-      }
-    } catch (e) {
-      lastError = e;
-    }
+  const url = `${chilexpressBaseUrl()}/georeference/api/v1.0/coverage-areas?RegionCode=99&type=0`;
+  const res = await fetch(url, { headers: coverageHeaders(), next: { revalidate: 86400 } });
+  if (!res.ok) {
+    throw new Error(`Cobertura Chilexpress respondió ${res.status}`);
   }
 
-  throw lastError instanceof Error
-    ? lastError
-    : new Error("No se pudo cargar cobertura Chilexpress");
+  const json = (await res.json()) as unknown;
+  const counties = pickCounties(json);
+  if (counties.length === 0) {
+    throw new Error("Chilexpress no devolvió comunas");
+  }
+
+  const regionNames = await fetchRegionNames();
+  coverageCache = counties
+    .map((county) => ({
+      ...county,
+      regionName: county.regionName || regionNames.get(county.regionCode) || county.regionCode,
+    }))
+    .sort(
+      (a, b) =>
+        a.regionName.localeCompare(b.regionName, "es") ||
+        a.countyName.localeCompare(b.countyName, "es"),
+    );
+  coverageCacheAt = now;
+  return coverageCache;
 }
 
 export async function findCountyByCode(code: string): Promise<CoverageCounty | null> {
@@ -169,7 +189,7 @@ export async function quoteChilexpressShipping(input: {
 
   const res = await fetch(url, {
     method: "POST",
-    headers: headers(),
+    headers: ratingHeaders(),
     body: JSON.stringify(body),
   });
 
@@ -181,7 +201,9 @@ export async function quoteChilexpressShipping(input: {
       "statusDescription" in json &&
       (json as { statusDescription?: string }).statusDescription
         ? String((json as { statusDescription: string }).statusDescription)
-        : `Cotización falló (${res.status})`;
+        : res.status === 401
+          ? "Key del Cotizador inválida. Usa la Primary key de flightt-cl-cotizador."
+          : `Cotización falló (${res.status})`;
     throw new Error(msg);
   }
 
