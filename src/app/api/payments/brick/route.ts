@@ -45,7 +45,22 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Orden no encontrada" }, { status: 404 });
   }
 
-  if (order.status !== "PENDING") {
+  if (order.status === "PAID") {
+    return NextResponse.json(
+      { error: "Esta orden ya está pagada" },
+      { status: 409 },
+    );
+  }
+  if (order.status === "CANCELLED") {
+    return NextResponse.json({ error: "Esta orden fue cancelada" }, { status: 409 });
+  }
+  if (order.status === "FAILED") {
+    await prisma.order.update({
+      where: { id: order.id },
+      data: { status: "PENDING", paymentId: null },
+    });
+    order.status = "PENDING";
+  } else if (order.status !== "PENDING") {
     return NextResponse.json(
       { error: "Esta orden ya no está pendiente de pago" },
       { status: 409 },

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { PublicHeader } from "@/components/PublicHeader";
-import { SiteFooter } from "@/components/SiteFooter";
+import { isMercadoPagoTestMode } from "@/lib/payments/config";
+import { PublicHeader } from "@/components/PublicHeader";import { SiteFooter } from "@/components/SiteFooter";
 import { CheckoutPendientePoller } from "@/components/checkout/CheckoutPendientePoller";
 
 type Props = { searchParams: Promise<{ ref?: string }> };
@@ -21,6 +21,7 @@ export default async function CheckoutErrorPage({ searchParams }: Props) {
     order.product.status === "AVAILABLE" &&
     (order.status === "PENDING" || order.status === "FAILED");
 
+  const showTestHint = isMercadoPagoTestMode();
   const [publishedDrops, featuredDrop] = await Promise.all([
     prisma.drop.findMany({
       where: { published: true },
@@ -44,8 +45,16 @@ export default async function CheckoutErrorPage({ searchParams }: Props) {
         <p className="mt-4 text-sm leading-relaxed text-zinc-400">
           {order?.product.status !== "AVAILABLE"
             ? "Esta prenda ya no está disponible. Elige otra del catálogo."
-            : "Podés intentar de nuevo o consultarnos por WhatsApp."}
+            : "Puedes intentar de nuevo o escribirnos por WhatsApp."}
         </p>
+        {showTestHint && order?.product?.status === "AVAILABLE" ? (
+          <p className="mt-3 rounded-xl border border-zinc-800 bg-zinc-900/50 px-4 py-3 text-left text-xs text-zinc-500">
+            <strong className="text-zinc-400">Prueba en modo test:</strong> tarjeta{" "}
+            <span className="font-mono text-zinc-400">5031 7557 3453 0604</span>, titular{" "}
+            <span className="font-mono text-zinc-400">APRO</span>, CVV <span className="font-mono">123</span>,
+            vencimiento futuro.
+          </p>
+        ) : null}
         {order?.product ? (
           <p className="mt-2 text-sm text-zinc-500">
             {order.product.code} — {order.product.title}

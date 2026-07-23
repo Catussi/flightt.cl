@@ -14,6 +14,11 @@ export function isMercadoPagoConfigured(): boolean {
   return Boolean(mercadoPagoAccessToken());
 }
 
+export function isMercadoPagoTestMode(): boolean {
+  const token = mercadoPagoAccessToken() ?? "";
+  return /TEST/i.test(token);
+}
+
 /** Catálogo con botón de pago embebido (Bricks). */
 export function isPaymentBrickConfigured(): boolean {
   return Boolean(mercadoPagoAccessToken() && mercadoPagoPublicKey());

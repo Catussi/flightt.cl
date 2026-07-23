@@ -85,7 +85,7 @@ export function ProductCardPublic({
             <p className="line-clamp-2 text-xs text-zinc-500">{product.description}</p>
           ) : null}
           <span className="pt-1 text-[10px] font-medium text-zinc-500 group-hover:text-zinc-400">
-            Toca para ver ficha y fotos
+            Toca la ficha para ver fotos
           </span>
         </div>
       </Link>

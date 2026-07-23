@@ -31,7 +31,17 @@ export default async function CheckoutPagarPage({ params }: Props) {
   if (order.status === "PAID") {
     redirect(`/checkout/exito?ref=${encodeURIComponent(order.id)}`);
   }
-  if (order.status === "FAILED" || order.status === "CANCELLED") {
+  if (order.status === "CANCELLED") {
+    redirect(`/checkout/error?ref=${encodeURIComponent(order.id)}`);
+  }
+
+  if (order.status === "FAILED" && order.product.status === "AVAILABLE") {
+    await prisma.order.update({
+      where: { id: order.id },
+      data: { status: "PENDING", paymentId: null },
+    });
+    order.status = "PENDING";
+  } else if (order.status === "FAILED") {
     redirect(`/checkout/error?ref=${encodeURIComponent(order.id)}`);
   }
 
