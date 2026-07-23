@@ -1,13 +1,18 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { isMercadoPagoTestMode } from "@/lib/payments/config";
-import { PublicHeader } from "@/components/PublicHeader";import { SiteFooter } from "@/components/SiteFooter";
-import { CheckoutPendientePoller } from "@/components/checkout/CheckoutPendientePoller";
+import {
+  fetchMercadoPagoPayment,
+  mpStatusDetailMessage,
+  MP_CHILE_TEST_HINT,
+} from "@/lib/payments/mpErrors";
+import { PublicHeader } from "@/components/PublicHeader";
+import { SiteFooter } from "@/components/SiteFooter";
 
-type Props = { searchParams: Promise<{ ref?: string }> };
+type Props = { searchParams: Promise<{ ref?: string; mp?: string }> };
 
 export default async function CheckoutErrorPage({ searchParams }: Props) {
-  const { ref } = await searchParams;
+  const { ref, mp } = await searchParams;
 
   const order = ref
     ? await prisma.order.findUnique({
@@ -22,6 +27,16 @@ export default async function CheckoutErrorPage({ searchParams }: Props) {
     (order.status === "PENDING" || order.status === "FAILED");
 
   const showTestHint = isMercadoPagoTestMode();
+
+  let rejectionMessage: string | null = null;
+  const detailCode = mp ?? null;
+  if (detailCode) {
+    rejectionMessage = mpStatusDetailMessage(detailCode);
+  } else if (order?.paymentId) {
+    const pay = await fetchMercadoPagoPayment(order.paymentId);
+    rejectionMessage = mpStatusDetailMessage(pay?.status_detail);
+  }
+
   const [publishedDrops, featuredDrop] = await Promise.all([
     prisma.drop.findMany({
       where: { published: true },
@@ -47,13 +62,33 @@ export default async function CheckoutErrorPage({ searchParams }: Props) {
             ? "Esta prenda ya no está disponible. Elige otra del catálogo."
             : "Puedes intentar de nuevo o escribirnos por WhatsApp."}
         </p>
-        {showTestHint && order?.product?.status === "AVAILABLE" ? (
-          <p className="mt-3 rounded-xl border border-zinc-800 bg-zinc-900/50 px-4 py-3 text-left text-xs text-zinc-500">
-            <strong className="text-zinc-400">Prueba en modo test:</strong> tarjeta{" "}
-            <span className="font-mono text-zinc-400">5031 7557 3453 0604</span>, titular{" "}
-            <span className="font-mono text-zinc-400">APRO</span>, CVV <span className="font-mono">123</span>,
-            vencimiento futuro.
+        {rejectionMessage ? (
+          <p className="mt-3 rounded-xl border border-red-900/40 bg-red-950/30 px-4 py-3 text-sm text-red-200">
+            {rejectionMessage}
           </p>
+        ) : null}
+        {showTestHint && order?.product?.status === "AVAILABLE" ? (
+          <div className="mt-3 rounded-xl border border-zinc-800 bg-zinc-900/50 px-4 py-3 text-left text-xs text-zinc-500">
+            <strong className="text-zinc-400">Tarjetas de prueba Chile (Mercado Pago):</strong>
+            <ul className="mt-2 list-inside list-disc space-y-1">
+              <li>
+                Mastercard{" "}
+                <span className="font-mono text-zinc-400">{MP_CHILE_TEST_HINT.card}</span>
+              </li>
+              <li>
+                CVV <span className="font-mono">{MP_CHILE_TEST_HINT.cvv}</span> · vence{" "}
+                <span className="font-mono">{MP_CHILE_TEST_HINT.expiry}</span>
+              </li>
+              <li>
+                Nombre del titular:{" "}
+                <span className="font-mono text-zinc-300">{MP_CHILE_TEST_HINT.holder}</span>
+              </li>
+              <li>
+                Documento:{" "}
+                <span className="font-mono text-zinc-300">{MP_CHILE_TEST_HINT.document}</span>
+              </li>
+            </ul>
+          </div>
         ) : null}
         {order?.product ? (
           <p className="mt-2 text-sm text-zinc-500">

@@ -9,9 +9,16 @@ import {
 } from "@/lib/payments/config";
 import { storeName } from "@/lib/site";
 
-function redirectForOrder(base: string, orderId: string, kind: "datos" | "error" | "pendiente") {
+function redirectForOrder(
+  base: string,
+  orderId: string,
+  kind: "datos" | "error" | "pendiente",
+  mpDetail?: string,
+) {
   if (kind === "datos") return `${base}/checkout/datos/${orderId}`;
-  return `${base}/checkout/${kind}?ref=${encodeURIComponent(orderId)}`;
+  const url = `${base}/checkout/${kind}?ref=${encodeURIComponent(orderId)}`;
+  if (mpDetail) return `${url}&mp=${encodeURIComponent(mpDetail)}`;
+  return url;
 }
 
 export async function POST(request: NextRequest) {
@@ -96,10 +103,15 @@ export async function POST(request: NextRequest) {
     pay = await api.create({ body: paymentBody });
   } catch (e: unknown) {
     console.error("MP create payment (brick):", e);
-    const msg =
-      e && typeof e === "object" && "message" in e
-        ? String((e as { message: unknown }).message)
-        : "Mercado Pago rechazó la operación";
+    let msg = "Mercado Pago rechazó la operación";
+    if (e && typeof e === "object") {
+      if ("message" in e && e.message) msg = String(e.message);
+      if ("cause" in e && Array.isArray((e as { cause: unknown }).cause)) {
+        const cause = (e as { cause: { description?: string }[] }).cause;
+        const first = cause[0]?.description;
+        if (first) msg = first;
+      }
+    }
     return NextResponse.json({ error: msg }, { status: 502 });
   }
 
@@ -133,7 +145,9 @@ export async function POST(request: NextRequest) {
     });
   }
 
+  const detail = pay.status_detail ?? undefined;
+
   return NextResponse.json({
-    redirect: redirectForOrder(base, order.id, "error"),
+    redirect: redirectForOrder(base, order.id, "error", detail),
   });
 }

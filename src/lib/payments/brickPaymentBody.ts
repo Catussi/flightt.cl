@@ -22,6 +22,67 @@ function pickPaymentKind(payload: BrickPayload): string {
   ).toLowerCase();
 }
 
+function normalizeIdNumber(raw: string): string {
+  return raw.replace(/[.\-\s]/g, "");
+}
+
+function buildPayer(
+  payerRaw: Record<string, unknown> | undefined,
+): PaymentCreateRequest["payer"] {
+  const email = payerRaw?.email;
+  if (!email || typeof email !== "string" || !email.includes("@")) {
+    throw new Error("Indica un correo válido en el formulario de pago");
+  }
+
+  const idRaw = payerRaw?.identification as
+    | { type?: string; number?: string }
+    | undefined;
+
+  const payer: PaymentCreateRequest["payer"] = { email };
+
+  if (idRaw?.number) {
+    payer.identification = {
+      type: idRaw.type?.trim() || "RUT",
+      number: normalizeIdNumber(String(idRaw.number)),
+    };
+  }
+
+  return payer;
+}
+
+function cardPaymentBody(
+  base: PaymentCreateRequest,
+  fd: BrickPayload["formData"],
+  kind: string,
+): PaymentCreateRequest {
+  const token = fd?.token;
+  if (!token || typeof token !== "string") {
+    throw new Error("Falta token de tarjeta");
+  }
+
+  const paymentMethodId = fd?.payment_method_id;
+  if (!paymentMethodId || typeof paymentMethodId !== "string") {
+    throw new Error("Falta medio de pago");
+  }
+
+  const isDebit = kind.includes("debit") || paymentMethodId.includes("deb");
+  const installments = isDebit ? 1 : Math.max(1, Number(fd?.installments ?? 1));
+
+  const body: PaymentCreateRequest = {
+    ...base,
+    token,
+    payment_method_id: paymentMethodId,
+    installments,
+    payer: buildPayer(fd?.payer as Record<string, unknown> | undefined),
+  };
+
+  if (fd?.issuer_id != null && fd.issuer_id !== "") {
+    body.issuer_id = Number(fd.issuer_id);
+  }
+
+  return body;
+}
+
 /** Arma el body de POST /v1/payments a partir del callback del Payment Brick. */
 export function buildPaymentBodyFromBrick(
   order: Order & { product: Product },
@@ -32,7 +93,7 @@ export function buildPaymentBodyFromBrick(
   const fd = payload.formData ?? {};
   const kind = pickPaymentKind(payload);
 
-  const base = {
+  const base: PaymentCreateRequest = {
     external_reference: order.id,
     notification_url: notificationUrl,
     transaction_amount: order.amountClp,
@@ -41,30 +102,13 @@ export function buildPaymentBodyFromBrick(
     metadata: { order_id: order.id, product_code: order.product.code },
   };
 
-  if (kind === "creditcard" || kind === "debitcard" || kind === "credit_card" || kind === "debit_card") {
-    const token = fd.token;
-    if (!token || typeof token !== "string") {
-      throw new Error("Falta token de tarjeta");
-    }
-    const payer = fd.payer as
-      | { email?: string; identification?: { type?: string; number?: string } }
-      | undefined;
-    return {
-      ...base,
-      token,
-      issuer_id: fd.issuer_id != null && fd.issuer_id !== "" ? Number(fd.issuer_id) : undefined,
-      payment_method_id: fd.payment_method_id as string,
-      installments: Math.max(1, Number(fd.installments ?? 1)),
-      payer: {
-        email: payer?.email,
-        identification: payer?.identification
-          ? {
-              type: payer.identification.type ?? "RUT",
-              number: String(payer.identification.number ?? ""),
-            }
-          : undefined,
-      },
-    };
+  if (
+    kind === "creditcard" ||
+    kind === "debitcard" ||
+    kind === "credit_card" ||
+    kind === "debit_card"
+  ) {
+    return cardPaymentBody(base, fd, kind);
   }
 
   if (
@@ -74,47 +118,27 @@ export function buildPaymentBodyFromBrick(
     kind === "banktransfer"
   ) {
     const payerRaw = fd.payer as Record<string, unknown> | undefined;
-    if (!payerRaw?.email || !fd.payment_method_id) {
+    if (!fd.payment_method_id) {
       throw new Error("Faltan datos del pagador para este medio");
     }
+    const payer = buildPayer(payerRaw);
     return {
       ...base,
       payment_method_id: fd.payment_method_id as string,
       payer: {
-        email: String(payerRaw.email),
-        identification: payerRaw.identification as { type: string; number: string },
-        first_name: String(payerRaw.first_name ?? payerRaw.firstName ?? ""),
-        last_name: String(payerRaw.last_name ?? payerRaw.lastName ?? ""),
+        ...payer,
+        first_name: String(payerRaw?.first_name ?? payerRaw?.firstName ?? "Cliente"),
+        last_name: String(payerRaw?.last_name ?? payerRaw?.lastName ?? "Flightt"),
       },
     };
   }
 
   if (kind === "wallet_purchase" || kind === "onboarding_credits") {
-    throw new Error(
-      "Saldo Mercado Pago / créditos requieren preferencia aparte. Usa tarjeta, débito o medios offline del brick.",
-    );
+    throw new Error("Este medio no está habilitado. Usa tarjeta de crédito o débito.");
   }
 
   if (fd.token && fd.payment_method_id) {
-    const payer = fd.payer as
-      | { email?: string; identification?: { type?: string; number?: string } }
-      | undefined;
-    return {
-      ...base,
-      token: fd.token as string,
-      issuer_id: fd.issuer_id != null && fd.issuer_id !== "" ? Number(fd.issuer_id) : undefined,
-      payment_method_id: fd.payment_method_id as string,
-      installments: Math.max(1, Number(fd.installments ?? 1)),
-      payer: {
-        email: payer?.email,
-        identification: payer?.identification
-          ? {
-              type: payer.identification.type ?? "RUT",
-              number: String(payer.identification.number ?? ""),
-            }
-          : undefined,
-      },
-    };
+    return cardPaymentBody(base, fd, kind);
   }
 
   throw new Error(`Medio de pago no reconocido (${kind || "desconocido"})`);

@@ -16,7 +16,17 @@ export function isMercadoPagoConfigured(): boolean {
 
 export function isMercadoPagoTestMode(): boolean {
   const token = mercadoPagoAccessToken() ?? "";
-  return /TEST/i.test(token);
+  const pub = mercadoPagoPublicKey() ?? "";
+  return /TEST/i.test(token) || /TEST/i.test(pub);
+}
+
+export function mercadoPagoKeysMatchMode(): boolean {
+  const token = mercadoPagoAccessToken() ?? "";
+  const pub = mercadoPagoPublicKey() ?? "";
+  const tokenTest = /TEST/i.test(token);
+  const pubTest = /TEST/i.test(pub);
+  if (!token || !pub) return true;
+  return tokenTest === pubTest;
 }
 
 /** Catálogo con botón de pago embebido (Bricks). */
