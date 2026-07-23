@@ -12,9 +12,10 @@ import { storeName } from "@/lib/site";
 function redirectForOrder(
   base: string,
   orderId: string,
-  kind: "datos" | "error" | "pendiente",
+  kind: "exito" | "error" | "pendiente" | "datos",
   mpDetail?: string,
 ) {
+  if (kind === "exito") return `${base}/checkout/exito?ref=${encodeURIComponent(orderId)}`;
   if (kind === "datos") return `${base}/checkout/datos/${orderId}`;
   const url = `${base}/checkout/${kind}?ref=${encodeURIComponent(orderId)}`;
   if (mpDetail) return `${url}&mp=${encodeURIComponent(mpDetail)}`;
@@ -79,6 +80,16 @@ export async function POST(request: NextRequest) {
   }
 
   const base = appBaseUrlFromRequest(request);
+
+  if (order.fulfillmentStatus !== "COMPLETE") {
+    return NextResponse.json(
+      {
+        error: "Completa retiro o envío antes de pagar.",
+        redirect: redirectForOrder(base, order.id, "datos"),
+      },
+      { status: 400 },
+    );
+  }
   const notificationUrl = `${base}/api/webhooks/mercadopago`;
   const shop = storeName().slice(0, 22).replace(/[^\w\s.-]/g, "").trim() || "Tienda";
 
@@ -122,7 +133,7 @@ export async function POST(request: NextRequest) {
   if (status === "approved" && paymentId) {
     await applyApprovedPayment(paymentId, order.id, amount);
     return NextResponse.json({
-      redirect: redirectForOrder(base, order.id, "datos"),
+      redirect: redirectForOrder(base, order.id, "exito"),
     });
   }
 

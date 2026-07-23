@@ -142,7 +142,7 @@ export default async function ProductPage({ params }: Props) {
         <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
           {showPay ? (
             <div className="flex min-w-[200px] flex-1 flex-col justify-stretch">
-              <PayButton productId={product.id} label="Pagar con Mercado Pago" />
+              <PayButton productId={product.id} label="Comprar" />
             </div>
           ) : null}
           {!sold && ig ? (

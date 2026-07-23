@@ -34,7 +34,7 @@ export function PayButton({
         throw new Error(msg);
       }
       if (!j.orderId) throw new Error("Sin orden de pago");
-      router.push(`/checkout/pagar/${j.orderId}`);
+      router.push(`/checkout/datos/${j.orderId}`);
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Error");
       setLoading(false);
@@ -49,7 +49,7 @@ export function PayButton({
         onClick={onPay}
         className="flex w-full items-center justify-center rounded-xl bg-sky-500 py-2.5 text-center text-sm font-semibold text-white shadow-lg shadow-sky-900/30 hover:bg-sky-400 disabled:opacity-60 sm:py-3 sm:text-base"
       >
-        {loading ? "Preparando pago…" : label}
+        {loading ? "Reservando…" : label}
       </button>
       {err ? (
         <p className="mt-2 text-center text-xs text-red-400" role="alert">

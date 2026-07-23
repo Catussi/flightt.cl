@@ -41,7 +41,7 @@ export function footerLines(): string[] {
   const raw = process.env.STORE_FOOTER?.trim();
   if (!raw) {
     return [
-      "Envíos Starken por pagar (costo a cargo del cliente).",
+      "Envíos Chilexpress cotizados en checkout.",
       "Retiro en feria: jueves o domingo.",
       "Sin cambios ni devoluciones salvo error nuestro.",
       "Consultas por Instagram o WhatsApp.",

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { PaymentBrickClient } from "@/components/checkout/PaymentBrickClient";
 import { MpChileTestHint } from "@/components/checkout/MpChileTestHint";
+import { CheckoutOrderSummary } from "@/components/checkout/CheckoutOrderSummary";
 import {
   isMercadoPagoTestMode,
   isPaymentBrickConfigured,
@@ -48,6 +49,10 @@ export default async function CheckoutPagarPage({ params }: Props) {
     redirect(`/checkout/error?ref=${encodeURIComponent(order.id)}`);
   }
 
+  if (order.fulfillmentStatus !== "COMPLETE") {
+    redirect(`/checkout/datos/${order.id}`);
+  }
+
   if (order.product.status !== "AVAILABLE") {
     return (
       <div className="min-h-full bg-zinc-950 text-zinc-100">
@@ -85,9 +90,20 @@ export default async function CheckoutPagarPage({ params }: Props) {
     <div className="min-h-full bg-zinc-950 text-zinc-100">
       <PublicHeader featuredDrop={featuredDrop} publishedDrops={publishedDrops} />
       <main className="mx-auto max-w-lg px-4 py-8">
-        <h1 className="text-xl font-semibold text-white">Pagar en {shop}</h1>
+        <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+          Paso 2 de 2
+        </p>
+        <h1 className="mt-1 text-xl font-semibold text-white">Pagar en {shop}</h1>
         <p className="mt-2 text-sm text-zinc-400">
-          Completa el pago con Mercado Pago. No compartas esta página.
+          Total confirmado. Completa el pago con Mercado Pago — no compartas esta página.
+        </p>
+        <div className="mt-6">
+          <CheckoutOrderSummary order={order} />
+        </div>
+        <p className="mt-3 text-center">
+          <Link href={`/checkout/datos/${order.id}`} className="text-xs text-zinc-500 hover:text-zinc-300">
+            Cambiar retiro o envío
+          </Link>
         </p>
         {order.loyaltyDiscountApplied ? (
           <p className="mt-3 rounded-xl border border-emerald-800/50 bg-emerald-950/30 px-3 py-2 text-xs text-emerald-200">

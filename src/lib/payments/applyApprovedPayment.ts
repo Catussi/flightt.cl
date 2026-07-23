@@ -1,7 +1,10 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { consumeLoyaltyRewardIfUsed } from "@/lib/loyalty";
-import { notifyOrderPaymentApproved } from "@/lib/notifications/orderEmails";
+import {
+  consumeLoyaltyRewardIfUsed,
+  recordLoyaltyPurchase,
+} from "@/lib/loyalty";
+import { notifyOrderFulfillmentComplete } from "@/lib/notifications/orderEmails";
 import { revalidateProductViews } from "@/lib/revalidateCatalog";
 
 /** Marca orden PAID y producto SOLD si corresponde. Idempotente si ya no está PENDING. */
@@ -17,6 +20,11 @@ export async function applyApprovedPayment(
     include: { product: true },
   });
   if (!order) return;
+
+  if (order.fulfillmentStatus !== "COMPLETE") {
+    console.warn(`MP approved order ${order.id} without fulfillment data`);
+    return;
+  }
 
   if (Math.round(amount) !== order.amountClp) {
     console.warn(`MP amount mismatch order ${order.id}: ${amount} vs ${order.amountClp}`);
@@ -54,9 +62,14 @@ export async function applyApprovedPayment(
   if (done?.status === "PAID" && done.product) {
     await consumeLoyaltyRewardIfUsed(externalRef);
     try {
-      await notifyOrderPaymentApproved(done);
+      await notifyOrderFulfillmentComplete(done);
     } catch (e) {
-      console.error("[email] payment approved notify", externalRef, e);
+      console.error("[email] fulfillment complete notify", externalRef, e);
+    }
+    try {
+      await recordLoyaltyPurchase(externalRef);
+    } catch (e) {
+      console.error("[loyalty] record purchase", externalRef, e);
     }
     revalidateProductViews(done.product.code, done.product.drop?.slug);
     revalidatePath("/admin/dashboard");

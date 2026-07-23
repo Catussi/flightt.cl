@@ -27,7 +27,7 @@ export function ProductCardPublic({
   const sale = getSaleInfo(product);
   const pay =
     showOnlinePay && product.status === "AVAILABLE" ? (
-      <PayButton productId={product.id} label="Pagar ahora" />
+      <PayButton productId={product.id} label="Comprar" />
     ) : null;
 
   return (

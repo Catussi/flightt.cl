@@ -6,7 +6,7 @@ import type { FulfillmentStatus, FulfillmentType, Order, PickupDay, Product } fr
 type OrderRow = Order & { product: Product };
 
 function fulfillmentBadge(type: FulfillmentType | null, day: PickupDay | null): string {
-  if (type === "SHIPPING") return "Envío Starken";
+  if (type === "SHIPPING") return "Envío Chilexpress";
   if (type === "PICKUP") {
     if (day === "THURSDAY") return "Retiro jueves";
     if (day === "SUNDAY") return "Retiro domingo";

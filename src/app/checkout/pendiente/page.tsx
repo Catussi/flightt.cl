@@ -43,7 +43,7 @@ export default async function CheckoutPendientePage({ searchParams }: Props) {
         <h1 className="mt-2 text-2xl font-semibold text-white">Estamos esperando confirmación</h1>
         <p className="mt-4 text-sm leading-relaxed text-zinc-400">
           Algunos medios (ej. efectivo o transferencias) tardan un poco. Cuando Mercado Pago confirme,
-          podrás completar tus datos de envío o retiro.
+          te llevaremos a la confirmación de compra.
         </p>
         {ref ? (
           <>

@@ -14,7 +14,7 @@ function pickupDayLabel(day: PickupDay | null | undefined): string {
 }
 
 function fulfillmentLabel(type: FulfillmentType | null | undefined): string {
-  if (type === "SHIPPING") return "Envío Starken (paga el cliente)";
+  if (type === "SHIPPING") return "Envío Chilexpress";
   if (type === "PICKUP") return "Retiro en feria";
   return "—";
 }
@@ -37,7 +37,7 @@ function buyerHtml(order: OrderWithProduct): string {
     );
   }
   if (isShipping) {
-    lines.push(`<li>Envío por Starken — el costo lo pagas tú al recibir o despachar según coordinemos.</li>`);
+    lines.push(`<li>Envío por Chilexpress — incluido en el total pagado.</li>`);
     lines.push(`<li>Dirección: ${order.buyerAddress}, ${order.buyerCommune}, ${order.buyerRegion}</li>`);
   }
   lines.push(`</ul><p>Gracias por comprar en ${shop}.</p>`);

@@ -11,7 +11,7 @@ function pickupDayLabel(day: PickupDay | null | undefined): string {
 }
 
 function fulfillmentLabel(type: FulfillmentType | null | undefined): string {
-  if (type === "SHIPPING") return "Envío Starken";
+  if (type === "SHIPPING") return "Envío Chilexpress";
   if (type === "PICKUP") return "Retiro feria";
   return "—";
 }

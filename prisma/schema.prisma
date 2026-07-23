@@ -105,8 +105,15 @@ model Order {
   customerId             String?
   customer               Customer?          @relation(fields: [customerId], references: [id], onDelete: SetNull)
   status                 OrderStatus        @default(PENDING)
-  /// Monto en CLP acordado al crear el checkout (snapshot).
+  /// Total a cobrar (prenda + envío Chilexpress si aplica).
   amountClp              Int
+  /// Precio de la prenda al crear la orden (sin envío).
+  productAmountClp       Int
+  /// Cotización Chilexpress al confirmar envío (0 si retiro en feria).
+  shippingCostClp        Int                @default(0)
+  /// Código de cobertura Chilexpress (4 letras) del destino.
+  buyerCountyCode        String?
+  shippingServiceName    String?
   loyaltyDiscountApplied Boolean            @default(false)
   loyaltyCounted         Boolean            @default(false)
   preferenceId           String?

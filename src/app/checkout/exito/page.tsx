@@ -55,7 +55,7 @@ export default async function CheckoutExitoPage({ searchParams }: Props) {
             <strong className="text-amber-400">{order.product.code}</strong>) quedó{" "}
             <strong className="text-emerald-400">confirmada</strong>.
             {order.fulfillmentType === "SHIPPING" ? (
-              <> Coordinaremos tu envío por Starken al correo que dejaste.</>
+              <> Coordinaremos tu envío por Chilexpress al correo que dejaste.</>
             ) : pickupText ? (
               <> Retiro en feria el <strong>{pickupText}</strong>. Te avisaremos por correo el día anterior.</>
             ) : null}

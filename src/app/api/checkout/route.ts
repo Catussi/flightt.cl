@@ -40,6 +40,7 @@ export async function POST(request: NextRequest) {
     data: {
       productId: product.id,
       customerId: customer?.id ?? null,
+      productAmountClp: amountClp,
       amountClp,
       loyaltyDiscountApplied: loyaltyApplied,
     },
