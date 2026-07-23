@@ -212,6 +212,104 @@ export async function createProductAction(
   redirect("/admin/dashboard");
 }
 
+export async function updateProductAction(
+  _prev: { error?: string } | undefined,
+  formData: FormData,
+): Promise<{ error?: string }> {
+  if (!(await isAdmin())) return { error: "No autorizado" };
+
+  const id = formData.get("id")?.toString().trim();
+  if (!id) return { error: "Prenda inválida" };
+
+  const existing = await prisma.product.findUnique({
+    where: { id },
+    include: { drop: { select: { slug: true } } },
+  });
+  if (!existing) return { error: "Prenda no encontrada" };
+
+  const title = formData.get("title")?.toString().trim() ?? "";
+  const priceRaw = formData.get("price")?.toString() ?? "";
+  const price = Number(priceRaw.replace(/\./g, "").replace(",", ""));
+  const size = formData.get("size")?.toString().trim() || null;
+  const brand = formData.get("brand")?.toString().trim() || null;
+  const description = formData.get("description")?.toString().trim() || null;
+  const dropIdRaw = formData.get("dropId")?.toString().trim() || "";
+  const category =
+    parseProductCategory(formData.get("category")?.toString()) ?? existing.category;
+
+  let dropId: string | null = null;
+  if (dropIdRaw) {
+    const d = await prisma.drop.findFirst({ where: { id: dropIdRaw } });
+    if (d) dropId = d.id;
+  }
+
+  if (!title || !Number.isFinite(price) || price < 0) {
+    return { error: "Título y precio válidos requeridos" };
+  }
+
+  const discountPercent = parseDiscountPercent(
+    formData.get("discountPercent")?.toString(),
+  );
+  const discountEndsAt = parseDiscountEndsAt(
+    formData.get("discountEndsAt")?.toString(),
+  );
+
+  if (discountPercent != null) {
+    if (!discountEndsAt) {
+      return { error: "Si pones descuento, indica fecha y hora de término" };
+    }
+    if (discountEndsAt <= new Date()) {
+      return { error: "La oferta debe terminar en el futuro" };
+    }
+  }
+
+  const kept = formData.getAll("keepImage").map((x) => x.toString()).filter(Boolean);
+  const newFiles = formData
+    .getAll("images")
+    .filter((x): x is File => x instanceof File && x.size > 0);
+
+  if (kept.length + newFiles.length === 0) {
+    return { error: "Mantén al menos una foto o sube una nueva" };
+  }
+  if (kept.length + newFiles.length > MAX_PRODUCT_IMAGES) {
+    return { error: `Máximo ${MAX_PRODUCT_IMAGES} fotos por prenda` };
+  }
+
+  const urls = [...kept];
+  for (const file of newFiles) {
+    if (file.size > 6 * 1024 * 1024) {
+      return { error: "Alguna foto supera 6 MB" };
+    }
+    urls.push(await saveUpload(file));
+  }
+
+  const updated = await prisma.product.update({
+    where: { id },
+    data: {
+      title,
+      price: Math.round(price),
+      size,
+      brand,
+      description,
+      images: JSON.stringify(urls),
+      dropId,
+      category,
+      discountPercent: discountPercent ?? null,
+      discountEndsAt: discountPercent != null ? discountEndsAt : null,
+    },
+    include: { drop: { select: { slug: true } } },
+  });
+
+  revalidateProductViews(updated.code, updated.drop?.slug);
+  if (existing.drop?.slug && existing.drop.slug !== updated.drop?.slug) {
+    revalidateDropSlug(existing.drop.slug);
+  }
+  revalidatePath("/admin/dashboard");
+  revalidatePath("/admin/drops");
+  revalidatePath(`/admin/productos/${id}`);
+  redirect("/admin/dashboard");
+}
+
 export async function createDropAction(
   _prev: { error?: string } | undefined,
   formData: FormData,

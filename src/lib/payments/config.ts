@@ -31,9 +31,14 @@ export function appBaseUrlFromRequest(request: NextRequest): string {
     request.headers.get("x-forwarded-host")?.split(",")[0]?.trim() ??
     request.headers.get("host") ??
     "";
-  if (!host) return "http://localhost:3000";
+  if (!host) return appBaseUrl();
 
   const proto =
     request.headers.get("x-forwarded-proto")?.split(",")[0]?.trim() ?? "http";
   return `${proto}://${host}`;
+}
+
+export function appBaseUrl(): string {
+  const fromEnv = process.env.NEXT_PUBLIC_APP_URL?.trim().replace(/\/$/, "");
+  return fromEnv || "http://localhost:3000";
 }

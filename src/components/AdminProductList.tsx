@@ -182,6 +182,12 @@ export function AdminProductList({ products, drops }: Props) {
                     Tope
                   </button>
                   <Link
+                    href={`/admin/productos/${p.id}`}
+                    className="rounded-lg border border-amber-700/50 px-2 py-1 text-[11px] text-amber-200/90 hover:border-amber-500"
+                  >
+                    Editar
+                  </Link>
+                  <Link
                     href={`/p/${encodeURIComponent(p.code)}`}
                     target="_blank"
                     rel="noreferrer"

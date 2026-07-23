@@ -24,7 +24,15 @@ export function PayButton({
         body: JSON.stringify({ productId }),
       });
       const j = (await r.json()) as { orderId?: string; error?: string };
-      if (!r.ok) throw new Error(j.error ?? "No se pudo iniciar el pago");
+      if (!r.ok) {
+        const msg =
+          r.status === 503
+            ? "Pagos en línea no disponibles por ahora. Consulta por WhatsApp."
+            : r.status === 409
+              ? "Esta prenda ya no está disponible."
+              : (j.error ?? "No se pudo iniciar el pago");
+        throw new Error(msg);
+      }
       if (!j.orderId) throw new Error("Sin orden de pago");
       router.push(`/checkout/pagar/${j.orderId}`);
     } catch (e) {

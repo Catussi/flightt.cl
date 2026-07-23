@@ -60,3 +60,10 @@ export function parseDiscountEndsAt(raw: string | null | undefined): Date | null
   if (Number.isNaN(d.getTime())) return null;
   return d;
 }
+
+/** Date → valor para input datetime-local en formularios admin. */
+export function formatDiscountEndsAtInput(date: Date | null | undefined): string {
+  if (!date) return "";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}

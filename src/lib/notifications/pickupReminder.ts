@@ -21,7 +21,7 @@ async function sendPickupReminder(order: OrderRow): Promise<void> {
   const day = pickupDayLabelEs(order.pickupDay);
   const when = formatPickupDate(order.pickupOn);
 
-  await sendEmail({
+  const ok = await sendEmail({
     to: order.buyerEmail,
     subject: `Recordatorio retiro en feria · mañana ${day} · ${shop}`,
     html: `<p>Hola <strong>${order.buyerFirstName ?? ""}</strong>,</p>
@@ -33,6 +33,10 @@ async function sendPickupReminder(order: OrderRow): Promise<void> {
 <p>— ${shop}</p>`,
     text: `Mañana ${day} retiras en feria: ${order.product.code} — ${order.product.title}.`,
   });
+
+  if (!ok) {
+    throw new Error(`pickup reminder email failed for order ${order.id}`);
+  }
 
   await prisma.order.update({
     where: { id: order.id },

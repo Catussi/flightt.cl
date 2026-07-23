@@ -2,11 +2,24 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { PublicHeader } from "@/components/PublicHeader";
 import { SiteFooter } from "@/components/SiteFooter";
+import { CheckoutPendientePoller } from "@/components/checkout/CheckoutPendientePoller";
 
 type Props = { searchParams: Promise<{ ref?: string }> };
 
 export default async function CheckoutErrorPage({ searchParams }: Props) {
   const { ref } = await searchParams;
+
+  const order = ref
+    ? await prisma.order.findUnique({
+        where: { id: ref },
+        include: { product: true },
+      })
+    : null;
+
+  const canRetry =
+    order &&
+    order.product.status === "AVAILABLE" &&
+    (order.status === "PENDING" || order.status === "FAILED");
 
   const [publishedDrops, featuredDrop] = await Promise.all([
     prisma.drop.findMany({
@@ -29,14 +42,37 @@ export default async function CheckoutErrorPage({ searchParams }: Props) {
         </p>
         <h1 className="mt-2 text-2xl font-semibold text-white">No se completó el pago</h1>
         <p className="mt-4 text-sm leading-relaxed text-zinc-400">
-          Podés intentar de nuevo desde la ficha del producto o escribirnos por WhatsApp.
+          {order?.product.status !== "AVAILABLE"
+            ? "Esta prenda ya no está disponible. Elige otra del catálogo."
+            : "Podés intentar de nuevo o consultarnos por WhatsApp."}
         </p>
+        {order?.product ? (
+          <p className="mt-2 text-sm text-zinc-500">
+            {order.product.code} — {order.product.title}
+          </p>
+        ) : null}
         {ref ? (
           <p className="mt-2 text-xs text-zinc-600">
             Referencia: <span className="font-mono text-zinc-500">{ref}</span>
           </p>
         ) : null}
         <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
+          {canRetry ? (
+            <Link
+              href={`/checkout/pagar/${order.id}`}
+              className="rounded-xl bg-sky-500 px-6 py-3 text-sm font-semibold text-white hover:bg-sky-400"
+            >
+              Reintentar pago
+            </Link>
+          ) : null}
+          {order?.product ? (
+            <Link
+              href={`/p/${encodeURIComponent(order.product.code)}`}
+              className="rounded-xl border border-zinc-600 px-6 py-3 text-sm text-zinc-300 hover:border-zinc-400"
+            >
+              Ver prenda
+            </Link>
+          ) : null}
           <Link
             href="/"
             className="rounded-xl bg-amber-500 px-6 py-3 text-sm font-semibold text-black hover:bg-amber-400"

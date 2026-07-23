@@ -1,5 +1,6 @@
 import type { FulfillmentType, Order, PickupDay, Product } from "@prisma/client";
 import { formatCLP } from "@/lib/products";
+import { appBaseUrl } from "@/lib/payments/config";
 import { storeName } from "@/lib/site";
 import { sellerWhatsAppNotifyUrl } from "@/lib/notifications/sellerWhatsApp";
 import { sendEmail, sellerEmail } from "@/lib/notifications/email";
@@ -72,21 +73,45 @@ export async function notifyOrderFulfillmentComplete(order: OrderWithProduct): P
   const waUrl = sellerWhatsAppNotifyUrl(order);
 
   if (order.buyerEmail) {
-    await sendEmail({
+    const sent = await sendEmail({
       to: order.buyerEmail,
       subject: `Compra confirmada · ${order.product.code} · ${shop}`,
       html: buyerHtml(order),
       text: `Compra confirmada: ${order.product.code} — ${order.product.title}. ${fulfillmentLabel(order.fulfillmentType)}.`,
     });
+    if (!sent) console.error("[email] buyer fulfillment failed", order.id);
   }
 
   const toSeller = sellerEmail();
   if (toSeller) {
-    await sendEmail({
+    const sent = await sendEmail({
       to: toSeller,
       subject: `Nueva venta ${order.product.code} · ${shop}`,
       html: sellerHtml(order, waUrl),
       text: `Nueva venta ${order.product.code}. ${order.buyerFirstName} ${order.buyerLastName}.`,
     });
+    if (!sent) console.error("[email] seller fulfillment failed", order.id);
   }
+}
+
+export async function notifyOrderPaymentApproved(order: OrderWithProduct): Promise<void> {
+  const shop = storeName();
+  const base = appBaseUrl();
+  const toSeller = sellerEmail();
+
+  if (!toSeller) return;
+
+  const sent = await sendEmail({
+    to: toSeller,
+    subject: `Pago recibido · ${order.product.code} · ${shop}`,
+    html: `<p>Se aprobó un pago en <strong>${shop}</strong>:</p>
+<ul>
+<li><strong>${order.product.code}</strong> — ${order.product.title}</li>
+<li>Monto: ${formatCLP(order.amountClp)}</li>
+</ul>
+<p>El cliente completará envío o retiro en <a href="${base}/checkout/datos/${order.id}">este formulario</a>.</p>
+<p><a href="${base}/admin/pedidos">Ver pedidos en admin</a></p>`,
+    text: `Pago recibido: ${order.product.code} — ${formatCLP(order.amountClp)}.`,
+  });
+  if (!sent) console.error("[email] seller payment failed", order.id);
 }

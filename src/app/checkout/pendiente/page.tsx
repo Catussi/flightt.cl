@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { PublicHeader } from "@/components/PublicHeader";
 import { SiteFooter } from "@/components/SiteFooter";
+import { CheckoutPendientePoller } from "@/components/checkout/CheckoutPendientePoller";
 
 type Props = { searchParams: Promise<{ ref?: string }> };
 
@@ -45,9 +46,12 @@ export default async function CheckoutPendientePage({ searchParams }: Props) {
           podrás completar tus datos de envío o retiro.
         </p>
         {ref ? (
-          <p className="mt-2 text-xs text-zinc-600">
-            Referencia de orden: <span className="font-mono text-zinc-500">{ref}</span>
-          </p>
+          <>
+            <CheckoutPendientePoller orderId={ref} />
+            <p className="mt-2 text-xs text-zinc-600">
+              Referencia de orden: <span className="font-mono text-zinc-500">{ref}</span>
+            </p>
+          </>
         ) : null}
         <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
           {ref ? (
