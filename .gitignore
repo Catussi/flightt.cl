@@ -35,6 +35,9 @@ yarn-error.log*
 .env.local
 .env.*.local
 !.env.example
+.env.local
+.env.seed
+.vercel
 
 # vercel
 .vercel
@@ -49,3 +52,6 @@ next-env.d.ts
 /prisma/**/*.db-journal
 public/uploads/*
 !public/uploads/.gitkeep
+
+.vercel
+.env*
